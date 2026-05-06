@@ -1,1 +1,122 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מנתח נתוני מניות</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Assistant', sans-serif; }
+    </style>
+</head>
+<body class="bg-[#1e293b] text-white min-h-screen flex items-center justify-center p-6">
 
+    <div class="max-w-md w-full bg-[#334155] rounded-xl shadow-2xl p-8 border border-slate-600">
+        <h1 class="text-2xl font-bold mb-6 text-center text-blue-400">איסוף נתוני מניות</h1>
+        
+        <form id="stockForm" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium mb-1">סמלי מניות (מופרדים בפסיק):</label>
+                <input type="text" id="tickers" placeholder="AAPL, TSLA, AMZN" required
+                    class="w-full p-3 rounded bg-[#1e293b] border border-slate-500 focus:border-blue-500 outline-none transition text-left" dir="ltr">
+            </div>
+
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium mb-1">תאריך התחלה:</label>
+                    <input type="date" id="startDate" required
+                        class="w-full p-3 rounded bg-[#1e293b] border border-slate-500 focus:border-blue-500 outline-none transition text-left" dir="ltr">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium mb-1">תאריך סיום:</label>
+                    <input type="date" id="endDate" required
+                        class="w-full p-3 rounded bg-[#1e293b] border border-slate-500 focus:border-blue-500 outline-none transition text-left" dir="ltr">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-medium mb-1">תדירות נתונים:</label>
+                <select id="frequency" class="w-full p-3 rounded bg-[#1e293b] border border-slate-500 focus:border-blue-500 outline-none transition">
+                    <option value="1d">יומי (Daily)</option>
+                    <option value="1wk">שבועי (Weekly)</option>
+                    <option value="1mo">חודשי (Monthly)</option>
+                </select>
+            </div>
+
+            <button type="submit" id="submitBtn" 
+                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-200 transform hover:scale-[1.02]">
+                שלח נתונים לעיבוד
+            </button>
+        </form>
+
+        <div id="statusArea" class="mt-6 hidden text-center">
+            <div id="loader" class="flex flex-col items-center">
+                <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-400 mb-2"></div>
+                <p class="text-blue-300">טוען נתונים...</p>
+            </div>
+            
+            <div id="successResult" class="hidden">
+                <p class="text-green-400 mb-4 font-semibold">הקובץ נוצר בהצלחה!</p>
+                <a id="sheetLink" href="#" target="_blank"
+                    class="inline-block bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg transition duration-200">
+                    פתח את הגיליון החדש
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const WEB_APP_URL = 'YOUR_WEB_APP_URL';
+
+        document.getElementById('stockForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            const statusArea = document.getElementById('statusArea');
+            const loader = document.getElementById('loader');
+            const successResult = document.getElementById('successResult');
+            const sheetLink = document.getElementById('sheetLink');
+
+            const tickersRaw = document.getElementById('tickers').value;
+            const payload = {
+                tickers: tickersRaw.split(',').map(s => s.trim().toUpperCase()),
+                startDate: document.getElementById('startDate').value,
+                endDate: document.getElementById('endDate').value,
+                frequency: document.getElementById('frequency').value
+            };
+
+            submitBtn.disabled = true;
+            submitBtn.classList.add('opacity-50', 'cursor-not-allowed');
+            statusArea.classList.remove('hidden');
+            loader.classList.remove('hidden');
+            successResult.classList.add('hidden');
+
+            try {
+                const response = await fetch(WEB_APP_URL, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+                    body: JSON.stringify(payload)
+                });
+                
+                const result = await response.json();
+
+                if (result.sheetUrl) {
+                    loader.classList.add('hidden');
+                    successResult.classList.remove('hidden');
+                    sheetLink.href = result.sheetUrl;
+                } else {
+                    throw new Error(result.error || 'שגיאה לא ידועה');
+                }
+
+            } catch (err) {
+                console.error(err);
+                alert('התרחשה שגיאה בעיבוד הנתונים. בדקי את הרשאות הפריסה ב-Google Apps Script.');
+                loader.classList.add('hidden');
+                submitBtn.disabled = false;
+                submitBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
+        });
+    </script>
+</body>
+</html>
